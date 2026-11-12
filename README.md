@@ -22,7 +22,7 @@ User 1 ---- N Post
 - **Flask-SQLAlchemy / SQLAlchemy 2.x**: ORM y mapeo de la relación.
 - **Flask-Marshmallow / Marshmallow**: serialización y deserialización a JSON.
 - **Swagger UI**: documentación interactiva de la API.
-- **Uvicorn**: servidor ASGI utilizado por `connex_app.run()`.
+- **Uvicorn**: servidor ASGI utilizado por Connexion (`app.run()`).
 
 ---
 
@@ -75,11 +75,16 @@ Puntos clave:
 ```text
 flask/
 ├── app/
-│   ├── __init__.py          # Crea la app, registra la vista y la API
-│   ├── config.py            # Configuración de Connexion, SQLAlchemy y Marshmallow
+│   ├── __init__.py          # create_app(): application factory
+│   ├── config.py            # Clase Config (base de datos, rutas)
+│   ├── extensions.py        # Instancias de SQLAlchemy y Marshmallow
 │   ├── models/
-│   │   ├── __init__.py      # Exporta modelos y esquemas
-│   │   └── blog.py          # Modelos User/Post y sus esquemas
+│   │   ├── __init__.py      # Exporta los modelos
+│   │   └── blog.py          # Entidades User y Post
+│   ├── schemas/
+│   │   ├── __init__.py      # Exporta los esquemas
+│   │   ├── post.py          # PostSchema
+│   │   └── user.py          # UserSchema con posts anidados
 │   ├── routes/
 │   │   ├── __init__.py
 │   │   ├── helpers.py       # Búsquedas con respuesta 404
@@ -92,12 +97,32 @@ flask/
 │   └── blog.db              # Base SQLite con datos de ejemplo
 ├── docs/
 │   └── swagger.yml          # Especificación OpenAPI 3.0
+├── tests/
+│   ├── __init__.py
+│   └── test_api.py          # Pruebas de integración con base en memoria
 ├── seed.py                  # Crea/recarga la base con datos de ejemplo
 ├── run.py                   # Punto de entrada de la aplicación
 ├── requirements.txt
 ├── .gitignore
 └── README.md
 ```
+
+### Buenas prácticas aplicadas
+
+- **Application factory (`create_app`)**: la aplicación se construye mediante una
+  función, lo que permite crear instancias con configuraciones distintas (por
+  ejemplo, una base en memoria para los tests) sin duplicar código.
+- **Separación de responsabilidades**:
+  - `models/`: entidades y reglas de persistencia.
+  - `schemas/`: serialización y deserialización JSON.
+  - `routes/`: controladores HTTP.
+  - `config.py`: configuración centralizada.
+  - `extensions.py`: extensiones inicializadas una sola vez.
+- **Blueprints** para la vista HTML, separada de los endpoints de la API.
+- **Helpers** para centralizar la búsqueda de recursos y las respuestas `404`.
+- **Pruebas automatizadas** con `unittest`, una base SQLite en memoria y
+  `StaticPool`, sin tocar la base real.
+- **Documentación** de la API con OpenAPI/Swagger y del proyecto en este README.
 
 ---
 
@@ -127,6 +152,12 @@ python run.py
 
 > Si el comando `python` abre la Microsoft Store, usá directamente
 > `.\venv\Scripts\python.exe` en los pasos 3, 4 y 5.
+
+Para ejecutar las pruebas automatizadas:
+
+```powershell
+python -m unittest discover -s tests -v
+```
 
 Luego abrir:
 
@@ -245,7 +276,9 @@ CREATE TABLE posts (
 ## Validación realizada
 
 Se probaron los endpoints con el cliente de pruebas ASGI de Connexion
-(`connex_app.test_client()`) y también con el servidor real levantado con Uvicorn.
+(`create_app().test_client()`) y también con el servidor real levantado con Uvicorn.
+Además, `tests/test_api.py` contiene **8 pruebas automatizadas** que usan una base
+SQLite en memoria para no modificar `database/blog.db`.
 
 | Prueba | Resultado |
 | :--- | :--- |
@@ -265,6 +298,14 @@ Se probaron los endpoints con el cliente de pruebas ASGI de Connexion
 | `DELETE /api/users/{id}` | `204 No Content` — elimina el usuario. |
 | `GET` del post tras borrar su usuario | `404 Not Found` — confirma el borrado en cascada. |
 | `GET /api/ui` | `200 OK` — carga Swagger UI. |
+
+Resultado de las pruebas automatizadas:
+
+```text
+Ran 8 tests in 0.752s
+
+OK
+```
 
 Ejemplo de respuesta de `GET /api/users`:
 
@@ -294,9 +335,13 @@ Ejemplo de respuesta de `GET /api/users`:
 
 - El proyecto retoma la relación del ejemplo `sqlalchemy/02_uno_a_muchos_blog` y la
   expone mediante Flask, Connexion y Marshmallow.
-- Los modelos `User` y `Post` están juntos en `app/models/blog.py` para que las
-  referencias adelantadas (`Mapped["User"]`, `Mapped[list["Post"]]`) se resuelvan
-  sin importaciones circulares.
+- La aplicación se crea con `create_app()` (*application factory*). Las extensiones
+  `db` y `ma` viven en `app/extensions.py` y se vinculan a cada instancia con
+  `init_app()`, lo que permite reutilizar la misma estructura en tests.
+- Los modelos `User` y `Post` están juntos en `app/models/blog.py` porque forman
+  una misma unidad de dominio y se referencian mutuamente. Los esquemas de
+  Marshmallow están separados en `app/schemas/` para no mezclar persistencia con
+  serialización.
 - La respuesta de un usuario incluye sus posts gracias a
   `posts = fields.Nested(PostSchema, many=True)`. A su vez, `PostSchema` usa
   `include_fk = True` para exponer `user_id`.
@@ -308,8 +353,11 @@ Ejemplo de respuesta de `GET /api/users`:
   clave foránea declara `ondelete="CASCADE"`.
 - `seed.py` es idempotente: no duplica datos si la base ya tiene usuarios. Con
   `--reset` borra y vuelve a crear todo.
-- `connex_app.run()` usa **Uvicorn** como servidor ASGI; por eso `uvicorn` forma
-  parte de las dependencias.
+- Las pruebas de `tests/test_api.py` se ejecutan con
+  `python -m unittest discover -s tests -v`. Usan `sqlite://` con `StaticPool`
+  para compartir una base en memoria entre conexiones.
+- `app.run()` de Connexion usa **Uvicorn** como servidor ASGI; por eso `uvicorn`
+  forma parte de las dependencias.
 - Connexion 3.3 emite un `StarletteDeprecationWarning` sobre `httpx` al iniciar.
   Proviene de la librería y no afecta el funcionamiento.
 - Se conserva `datetime.utcnow` para mantener fidelidad con el material; en

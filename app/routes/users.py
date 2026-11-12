@@ -1,8 +1,9 @@
 from flask import abort
 
-from app.config import db
-from app.models import User, user_schema, users_schema
+from app.extensions import db
+from app.models import User
 from app.routes.helpers import get_user_or_404
+from app.schemas import user_schema, users_schema
 
 
 def read_all():

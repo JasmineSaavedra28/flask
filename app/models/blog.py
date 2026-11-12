@@ -1,11 +1,10 @@
 from datetime import datetime
 from typing import Optional
 
-from marshmallow import fields
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.config import db, ma
+from app.extensions import db
 
 
 class User(db.Model):
@@ -48,26 +47,3 @@ class Post(db.Model):
 
     # Relación inversa: cada post pertenece a un único usuario.
     author: Mapped["User"] = db.relationship("User", back_populates="posts")
-
-
-class PostSchema(ma.SQLAlchemyAutoSchema):
-    class Meta:
-        model = Post
-        load_instance = True
-        sqla_session = db.session
-        include_fk = True
-
-
-class UserSchema(ma.SQLAlchemyAutoSchema):
-    posts = fields.Nested(PostSchema, many=True)
-
-    class Meta:
-        model = User
-        load_instance = True
-        sqla_session = db.session
-
-
-user_schema = UserSchema()
-users_schema = UserSchema(many=True)
-post_schema = PostSchema()
-posts_schema = PostSchema(many=True)

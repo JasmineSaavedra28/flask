@@ -1,4 +1,6 @@
-from app import connex_app
+from app import create_app
+
+app = create_app()
 
 if __name__ == "__main__":
-    connex_app.run(host="0.0.0.0", port=8000)
+    app.run(host="0.0.0.0", port=8000)

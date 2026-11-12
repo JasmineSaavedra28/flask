@@ -1,6 +1,6 @@
 from flask import abort
 
-from app.config import db
+from app.extensions import db
 from app.models import Post, User
 
 

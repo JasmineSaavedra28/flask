@@ -1,8 +1,9 @@
 from flask import abort
 
-from app.config import db
-from app.models import Post, post_schema, posts_schema
+from app.extensions import db
+from app.models import Post
 from app.routes.helpers import get_post_or_404, get_user_or_404
+from app.schemas import post_schema, posts_schema
 
 
 def read_all():

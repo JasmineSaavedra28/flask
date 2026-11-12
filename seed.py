@@ -7,8 +7,8 @@ Uso:
 
 import argparse
 
-from app import connex_app
-from app.config import db
+from app import create_app
+from app.extensions import db
 from app.models import Post, User
 
 
@@ -71,6 +71,8 @@ def main():
         help="Borra las tablas existentes antes de cargar los datos.",
     )
     args = parser.parse_args()
+
+    connex_app = create_app()
 
     with connex_app.app.app_context():
         if args.reset:
