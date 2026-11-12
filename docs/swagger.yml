@@ -1,0 +1,266 @@
+openapi: 3.0.0
+info:
+  title: "Blog REST API"
+  description: "API sobre usuarios y posts: relación uno a muchos"
+  version: "1.0.0"
+
+servers:
+  - url: "/api"
+
+tags:
+  - name: "Users"
+    description: "Usuarios del blog (lado uno de la relación)"
+  - name: "Posts"
+    description: "Artículos escritos por los usuarios (lado muchos)"
+
+components:
+  schemas:
+    User:
+      type: "object"
+      required:
+        - username
+        - email
+      properties:
+        id:
+          type: "integer"
+          readOnly: true
+        username:
+          type: "string"
+        email:
+          type: "string"
+        timestamp:
+          type: "string"
+          format: "date-time"
+          readOnly: true
+        posts:
+          type: "array"
+          readOnly: true
+          items:
+            $ref: "#/components/schemas/Post"
+
+    Post:
+      type: "object"
+      required:
+        - title
+        - user_id
+      properties:
+        id:
+          type: "integer"
+          readOnly: true
+        title:
+          type: "string"
+        content:
+          type: "string"
+        user_id:
+          type: "integer"
+        timestamp:
+          type: "string"
+          format: "date-time"
+          readOnly: true
+
+  parameters:
+    user_id:
+      name: "user_id"
+      description: "Identificador del usuario"
+      in: "path"
+      required: true
+      schema:
+        type: "integer"
+    post_id:
+      name: "post_id"
+      description: "Identificador del post"
+      in: "path"
+      required: true
+      schema:
+        type: "integer"
+
+paths:
+  /users:
+    get:
+      operationId: "app.routes.users.read_all"
+      tags:
+        - "Users"
+      summary: "Leer la lista de usuarios con sus posts"
+      responses:
+        "200":
+          description: "Lista de usuarios leída correctamente"
+          content:
+            application/json:
+              schema:
+                type: "array"
+                items:
+                  $ref: "#/components/schemas/User"
+    post:
+      operationId: "app.routes.users.create"
+      tags:
+        - "Users"
+      summary: "Crear un usuario"
+      requestBody:
+        description: "Usuario a crear"
+        required: true
+        x-body-name: "user"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/User"
+      responses:
+        "201":
+          description: "Usuario creado correctamente"
+        "406":
+          description: "El nombre de usuario ya existe"
+
+  /users/{user_id}:
+    get:
+      operationId: "app.routes.users.read_one"
+      tags:
+        - "Users"
+      summary: "Leer un usuario con sus posts"
+      parameters:
+        - $ref: "#/components/parameters/user_id"
+      responses:
+        "200":
+          description: "Usuario leído correctamente"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          description: "Usuario no encontrado"
+    put:
+      operationId: "app.routes.users.update"
+      tags:
+        - "Users"
+      summary: "Actualizar un usuario"
+      parameters:
+        - $ref: "#/components/parameters/user_id"
+      requestBody:
+        description: "Datos actualizados del usuario"
+        required: true
+        x-body-name: "user"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/User"
+      responses:
+        "200":
+          description: "Usuario actualizado correctamente"
+        "404":
+          description: "Usuario no encontrado"
+        "406":
+          description: "El nombre de usuario ya existe"
+    delete:
+      operationId: "app.routes.users.delete"
+      tags:
+        - "Users"
+      summary: "Eliminar un usuario y todos sus posts"
+      parameters:
+        - $ref: "#/components/parameters/user_id"
+      responses:
+        "204":
+          description: "Usuario y sus posts eliminados correctamente"
+        "404":
+          description: "Usuario no encontrado"
+
+  /users/{user_id}/posts:
+    get:
+      operationId: "app.routes.posts.read_by_user"
+      tags:
+        - "Posts"
+      summary: "Leer todos los posts de un usuario"
+      parameters:
+        - $ref: "#/components/parameters/user_id"
+      responses:
+        "200":
+          description: "Posts del usuario leídos correctamente"
+          content:
+            application/json:
+              schema:
+                type: "array"
+                items:
+                  $ref: "#/components/schemas/Post"
+        "404":
+          description: "Usuario no encontrado"
+
+  /posts:
+    get:
+      operationId: "app.routes.posts.read_all"
+      tags:
+        - "Posts"
+      summary: "Leer la lista de posts"
+      responses:
+        "200":
+          description: "Lista de posts leída correctamente"
+          content:
+            application/json:
+              schema:
+                type: "array"
+                items:
+                  $ref: "#/components/schemas/Post"
+    post:
+      operationId: "app.routes.posts.create"
+      tags:
+        - "Posts"
+      summary: "Crear un post asociado a un usuario"
+      requestBody:
+        description: "Post a crear"
+        required: true
+        x-body-name: "post"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Post"
+      responses:
+        "201":
+          description: "Post creado correctamente"
+        "404":
+          description: "El usuario indicado no existe"
+
+  /posts/{post_id}:
+    get:
+      operationId: "app.routes.posts.read_one"
+      tags:
+        - "Posts"
+      summary: "Leer un post"
+      parameters:
+        - $ref: "#/components/parameters/post_id"
+      responses:
+        "200":
+          description: "Post leído correctamente"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Post"
+        "404":
+          description: "Post no encontrado"
+    put:
+      operationId: "app.routes.posts.update"
+      tags:
+        - "Posts"
+      summary: "Actualizar un post (incluye reasignarlo a otro usuario)"
+      parameters:
+        - $ref: "#/components/parameters/post_id"
+      requestBody:
+        description: "Datos actualizados del post"
+        required: true
+        x-body-name: "post"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Post"
+      responses:
+        "200":
+          description: "Post actualizado correctamente"
+        "404":
+          description: "Post o usuario no encontrado"
+    delete:
+      operationId: "app.routes.posts.delete"
+      tags:
+        - "Posts"
+      summary: "Eliminar un post"
+      parameters:
+        - $ref: "#/components/parameters/post_id"
+      responses:
+        "204":
+          description: "Post eliminado correctamente"
+        "404":
+          description: "Post no encontrado"

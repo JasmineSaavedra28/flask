@@ -1,0 +1,4 @@
+# Stack probado con Python 3.14 en Windows.
+# Connexion 3.x utiliza Flask + Uvicorn para ejecutar la app.
+connexion[flask,swagger-ui,uvicorn]==3.3.0
+flask-marshmallow[sqlalchemy]==1.5.0
